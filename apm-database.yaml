@@ -1,0 +1,15 @@
+version: '3'
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: "apm"
+      POSTGRES_PASSWORD: "apm"
+      POSTGRES_DB: "apm_db"
+      INIT_SQL_URL: "https://github.com/MTSistemi/ApacheProxyManager/raw/main/init.sql"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+volumes:
+  pgdata:
