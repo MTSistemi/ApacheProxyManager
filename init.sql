@@ -27,7 +27,8 @@ CREATE TABLE vhosts (
     access_list TEXT[],
     ssl_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     ssl_certificate_id INT,
-    timeout INT, -- Aggiunto campo per il timeout
+    timeout INT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (ssl_certificate_id) REFERENCES ssl_certificates(id)
 );
