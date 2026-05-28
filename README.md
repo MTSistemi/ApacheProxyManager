@@ -1,121 +1,127 @@
 # Apache Proxy Manager
 
-MVP di pannello web stile Nginx Proxy Manager, ma pensato per Apache HTTPD, `mod_proxy`, `mod_proxy_ajp` e certificati Let's Encrypt con challenge DNS OVH.
+Pannello web per gestire VirtualHost Apache con reverse proxy `http`, `https`, `ws`, `wss` e `ajp`, esportazione configurazioni Apache e richiesta certificati Let's Encrypt tramite challenge DNS OVH.
 
-## Funzioni presenti
+Il progetto e' pensato come alternativa leggera a Nginx Proxy Manager quando l'infrastruttura deve rimanere su Apache HTTPD e `mod_proxy_ajp`.
 
-- Setup iniziale obbligatorio con creazione del primo amministratore.
-- Login con password e secondo fattore TOTP opzionale compatibile con Google Authenticator.
-- Pannello utenti per creare, modificare, disabilitare ed eliminare utenti.
-- Abilitazione 2FA per singolo utente dopo la creazione, con QR code, URI `otpauth://` e verifica obbligatoria del codice prima del salvataggio.
-- Dashboard iniziale con stato host online/offline, uso CPU, RAM e disco aggiornati in polling.
-- Navigazione principale per Hosts, Utenti, Impostazioni, Certificati e Logs.
-- Dark mode persistente nel browser.
+## Stato
+
+- Backend Node.js senza framework esterni.
+- Frontend statico servito dalla stessa app.
+- Persistenza su database JSON locale.
+- Immagine Docker con Node.js, Apache, certbot e plugin `certbot-dns-ovh`.
+- Stack Portainer supportato tramite `compose.portainer.yaml`.
+
+## Funzioni
+
+- Setup iniziale del primo amministratore.
+- Login con password e 2FA TOTP opzionale.
+- Gestione utenti con ruoli `admin` e `operator`.
 - CRUD VirtualHost Apache.
-- ProxyPass e ProxyPassReverse per `ajp`, `http`, `https`, `ws`, `wss`.
-- Redirect per path, incluso il caso `/ -> https://dominio/MIP`.
+- Regole `ProxyPass` e `ProxyPassReverse`.
+- Redirect per path.
 - Preview live della configurazione Apache.
-- Export config in `generated/` e, su server Linux, deploy in `/etc/apache2/sites-available`.
-- Certificati OVH tramite `certbot` e plugin `certbot-dns-ovh`.
-- Seed iniziale basato su `cavalli.poloinformatico.it`.
+- Export locale in `generated/`.
+- Deploy diretto in `/etc/apache2/sites-available` quando configurato.
+- Dashboard con stato host, CPU, RAM e disco.
+- Lettura log generali e log VirtualHost.
+- Certificati Let's Encrypt con OVH DNS.
 
-## Avvio locale
+## Requisiti
+
+- Node.js 20 o superiore per esecuzione locale.
+- Docker e Docker Compose per esecuzione containerizzata.
+- Apache 2.4, `certbot` e `python3-certbot-dns-ovh` per deploy bare metal.
+
+## Avvio Locale
 
 ```bash
 node server.mjs
 ```
 
-Poi apri:
+Apri:
 
 ```text
 http://localhost:4321
 ```
 
-Alla prima apertura l'app mostra la schermata di setup. L'amministratore iniziale viene creato con username e password; la 2FA si puo' abilitare dopo dal pannello `Utenti`.
-
-In questo ambiente Codex puoi usare il Node bundled:
-
-```powershell
-& "C:\Users\Mattia\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" server.mjs
-```
+Alla prima apertura l'app richiede la creazione dell'amministratore iniziale.
 
 ## Docker
 
-Build e avvio locale con Docker Compose:
+Build e avvio:
 
 ```bash
 docker compose up -d --build
 ```
 
-Poi apri:
+Apri:
 
 ```text
 http://localhost:4321
 ```
 
-L'immagine include Node.js, Apache, `certbot` e `python3-certbot-dns-ovh`. I volumi persistenti definiti in `compose.yaml` mantengono database app, configurazioni generate, certificati Let's Encrypt e log Apache:
+Volumi persistenti:
 
-- `app-data` -> `/app/data`
-- `app-generated` -> `/app/generated`
-- `letsencrypt` -> `/etc/letsencrypt`
-- `apache-logs` -> `/var/log/apache2`
+- `app-data` per `/app/data`
+- `app-generated` per `/app/generated`
+- `letsencrypt` per `/etc/letsencrypt`
+- `apache-logs` per `/var/log/apache2`
 
-Per Portainer, dopo aver costruito o caricato l'immagine `apache-proxy-manager:dev` sull'endpoint Docker, usa `compose.portainer.yaml`.
+## Portainer
 
-## Deploy Apache
+Per Portainer usa `compose.portainer.yaml` dopo aver reso disponibile sull'endpoint Docker l'immagine:
 
-Su Debian/Ubuntu:
+```text
+apache-proxy-manager:dev
+```
+
+Lo stack espone:
+
+- `4321` per il pannello web
+- `80` per Apache HTTP
+- `443` per Apache HTTPS
+
+## Configurazione
+
+Le variabili principali sono documentate in `.env.example`.
 
 ```bash
-chmod +x scripts/bootstrap-debian.sh
-./scripts/bootstrap-debian.sh
+PORT=4321
+DB_PATH=./data/db.json
+GENERATED_DIR=./generated
+SECRETS_DIR=./data/secrets
+CERTBOT_BIN=certbot
+APACHE_SITES_AVAILABLE=/etc/apache2/sites-available
+APACHE_SITES_ENABLED=/etc/apache2/sites-enabled
+APACHE_TEST_COMMAND="apachectl configtest"
+APACHE_RELOAD_COMMAND="systemctl reload apache2"
 ```
 
-Variabili ambiente principali:
+In Docker questi percorsi sono gia' configurati per lavorare dentro il container.
 
-```bash
-export APACHE_SITES_AVAILABLE=/etc/apache2/sites-available
-export APACHE_SITES_ENABLED=/etc/apache2/sites-enabled
-export APACHE_TEST_COMMAND="apachectl configtest"
-export APACHE_RELOAD_COMMAND="systemctl reload apache2"
-export CERTBOT_BIN=certbot
-node server.mjs
-```
+## Documentazione
 
-Il bottone `Esporta` scrive sempre una copia in `generated/`. Se `APACHE_SITES_AVAILABLE` e' configurato, scrive anche la config Apache reale. Se `APACHE_TEST_COMMAND` e' configurato, viene eseguito dopo la scrittura.
+- [Deploy](docs/deployment.md)
+- [Configurazione](docs/configuration.md)
+- [Operativita'](docs/operations.md)
+- [Sicurezza](docs/security.md)
+- [API](docs/api.md)
 
-## Certificati OVH
+## Verifica
 
-Il pannello usa `certbot certonly --dns-ovh`. Il file credenziali generato contiene:
-
-```ini
-dns_ovh_endpoint = ovh-eu
-dns_ovh_application_key = ...
-dns_ovh_application_secret = ...
-dns_ovh_consumer_key = ...
-```
-
-Le credenziali vengono scritte in `data/secrets/` con permessi `0600` quando il sistema operativo lo supporta. In produzione questa directory deve stare fuori dal web root ed essere leggibile solo dall'utente che avvia certbot.
-
-Documentazione utile:
-
-- Certbot DNS OVH: https://certbot-dns-ovh.readthedocs.io/
-- Primo accesso API OVHcloud: https://support.us.ovhcloud.com/hc/en-us/articles/360018130839-First-Steps-with-the-OVHcloud-API
-
-## Utenti e sicurezza
-
-Le password sono salvate con `crypto.scrypt` e salt casuale. Le sessioni usano cookie `HttpOnly` e token salvati come hash SHA-256 nel database JSON. La chiave TOTP e' compatibile con Google Authenticator tramite URI `otpauth://totp/...` e QR code generato nel browser.
-
-Il pannello `Utenti` e' visibile solo agli amministratori. L'app impedisce di eliminare o disabilitare l'ultimo amministratore attivo. La 2FA e' facoltativa e si abilita o disabilita per ogni singolo utente. Quando viene abilitata o rigenerata, il backend salva la nuova chiave solo dopo aver verificato un codice TOTP valido.
-
-## Dashboard e logs
-
-La dashboard legge le metriche locali dal sistema operativo e verifica lo stato dei backend con connessioni TCP verso gli host e le porte configurate nei `ProxyPass`. I log generali corrispondono al registro attivita' dell'app; i log per VirtualHost leggono i percorsi `CustomLog` ed `ErrorLog` configurati sull'host, quando disponibili sul server dove gira l'app.
-
-## Verifica renderer
+Verifica del renderer Apache:
 
 ```bash
 node scripts/render-sample.mjs
 ```
 
-Il comando stampa la validazione e la config Apache generata dal seed iniziale.
+Health check applicativo:
+
+```bash
+curl http://localhost:4321/api/health
+```
+
+## Note Di Sicurezza
+
+Non versionare dati runtime, credenziali OVH, database JSON, sessioni o certificati. Il repository esclude `data/`, `generated/`, `.env`, file di log e formati comuni di chiavi/certificati.
