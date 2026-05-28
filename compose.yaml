@@ -1,0 +1,32 @@
+services:
+  apache-proxy-manager:
+    build:
+      context: .
+    image: apache-proxy-manager:dev
+    container_name: apache-proxy-manager
+    restart: unless-stopped
+    ports:
+      - "4321:4321"
+      - "80:80"
+      - "443:443"
+    environment:
+      PORT: 4321
+      DB_PATH: /app/data/db.json
+      GENERATED_DIR: /app/generated
+      SECRETS_DIR: /app/data/secrets
+      CERTBOT_BIN: certbot
+      APACHE_SITES_AVAILABLE: /etc/apache2/sites-available
+      APACHE_SITES_ENABLED: /etc/apache2/sites-enabled
+      APACHE_TEST_COMMAND: apachectl configtest
+      APACHE_RELOAD_COMMAND: apachectl graceful
+    volumes:
+      - app-data:/app/data
+      - app-generated:/app/generated
+      - letsencrypt:/etc/letsencrypt
+      - apache-logs:/var/log/apache2
+
+volumes:
+  app-data:
+  app-generated:
+  letsencrypt:
+  apache-logs:

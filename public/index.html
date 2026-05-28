@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Apache Proxy Manager</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <section class="auth-screen" id="authScreen" hidden>
+      <div class="auth-card">
+        <div class="brand auth-brand">
+          <div class="brand-mark">AP</div>
+          <div>
+            <strong>Apache Proxy</strong>
+            <span>Manager</span>
+          </div>
+        </div>
+
+        <div class="notice" id="authNotice" hidden></div>
+
+        <form id="setupPanel" class="auth-panel" hidden>
+          <p class="eyebrow">Prima installazione</p>
+          <h1>Admin iniziale</h1>
+          <div class="form-grid auth-grid">
+            <label>
+              Username
+              <input id="setupUsernameInput" autocomplete="username" spellcheck="false" value="admin">
+            </label>
+            <label>
+              Nome
+              <input id="setupDisplayNameInput" autocomplete="name" spellcheck="false" value="Amministratore">
+            </label>
+            <label class="span-2">
+              Email
+              <input id="setupEmailInput" type="email" autocomplete="email" spellcheck="false">
+            </label>
+            <label>
+              Password
+              <input id="setupPasswordInput" type="password" autocomplete="new-password">
+            </label>
+            <label>
+              Conferma password
+              <input id="setupPasswordConfirmInput" type="password" autocomplete="new-password">
+            </label>
+          </div>
+          <div class="inline-actions form-actions">
+            <button class="primary-button" id="setupButton" type="submit">
+              <span data-icon="save"></span>
+              Crea admin
+            </button>
+          </div>
+        </form>
+
+        <form id="loginPanel" class="auth-panel" hidden>
+          <p class="eyebrow">Accesso</p>
+          <h1>Apache Proxy Manager</h1>
+          <div class="form-grid single">
+            <label>
+              Username
+              <input id="loginUsernameInput" autocomplete="username" spellcheck="false">
+            </label>
+            <label>
+              Password
+              <input id="loginPasswordInput" type="password" autocomplete="current-password">
+            </label>
+            <label>
+              Codice 2FA se attivo
+              <input id="loginTotpInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+            </label>
+          </div>
+          <div class="inline-actions form-actions">
+            <button class="primary-button" id="loginButton" type="submit">
+              <span data-icon="log-in"></span>
+              Entra
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <div class="app-shell" id="appShell" hidden>
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">AP</div>
+          <div>
+            <strong>Apache Proxy</strong>
+            <span>Manager</span>
+          </div>
+        </div>
+
+        <button class="primary-action" id="newHostButton" type="button">
+          <span data-icon="plus"></span>
+          Nuovo host
+        </button>
+
+        <div class="side-label">Host</div>
+        <div class="host-list" id="hostList"></div>
+
+        <div class="side-card">
+          <div class="side-label">Apache</div>
+          <code id="moduleHint">a2enmod proxy proxy_ajp ssl</code>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Apache Proxy Manager</p>
+            <h1 id="pageTitle">Dashboard</h1>
+          </div>
+          <div class="top-actions">
+            <button class="ghost-button" id="themeToggleButton" type="button">
+              <span data-icon="moon"></span>
+              Dark
+            </button>
+            <div class="user-pill" id="currentUserPill"></div>
+            <button class="ghost-button host-action" id="duplicateButton" type="button">
+              <span data-icon="copy"></span>
+              Duplica
+            </button>
+            <button class="ghost-button danger host-action" id="deleteButton" type="button">
+              <span data-icon="trash-2"></span>
+              Elimina
+            </button>
+            <button class="primary-button host-action" id="saveButton" type="button">
+              <span data-icon="save"></span>
+              Salva
+            </button>
+            <button class="ghost-button" id="logoutButton" type="button">
+              <span data-icon="log-out"></span>
+              Esci
+            </button>
+          </div>
+        </header>
+
+        <nav class="tabs" aria-label="Sezioni">
+          <button class="tab active" type="button" data-tab="dashboard">Dashboard</button>
+          <button class="tab" type="button" data-tab="host">Hosts</button>
+          <button class="tab" type="button" data-tab="routes">Route</button>
+          <button class="tab" type="button" data-tab="config">Config</button>
+          <button class="tab" type="button" data-tab="certs">Certificati</button>
+          <button class="tab admin-only" type="button" data-tab="users">Utenti</button>
+          <button class="tab" type="button" data-tab="settings">Impostazioni</button>
+          <button class="tab" type="button" data-tab="logs">Logs</button>
+        </nav>
+
+        <section class="metrics" id="metrics"></section>
+
+        <div class="notice" id="notice" hidden></div>
+
+        <section class="tab-panel active" data-panel="dashboard">
+          <div class="dashboard-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Risorse server</h2>
+                <span class="mini-meta" id="dashboardUpdatedAt">-</span>
+              </div>
+              <div class="resource-grid" id="resourceGrid"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Stato host</h2>
+                <button class="ghost-button compact" id="refreshDashboardButton" type="button">
+                  <span data-icon="refresh-cw"></span>
+                  Aggiorna
+                </button>
+              </div>
+              <div class="table-wrap">
+                <table class="status-table">
+                  <thead>
+                    <tr>
+                      <th>Host</th>
+                      <th>Stato</th>
+                      <th>Backend</th>
+                      <th>Dettaglio</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboardHostRows"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="host">
+          <div class="editor-grid">
+            <form class="panel" id="hostForm">
+              <div class="panel-heading">
+                <h2>VirtualHost</h2>
+                <label class="switch">
+                  <input type="checkbox" id="enabledInput">
+                  <span></span>
+                  Attivo
+                </label>
+              </div>
+
+              <div class="form-grid">
+                <label>
+                  ServerName
+                  <input id="serverNameInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  ServerAlias
+                  <input id="serverAliasesInput" autocomplete="off" spellcheck="false" placeholder="www.dominio.it alias.dominio.it">
+                </label>
+                <label>
+                  ServerAdmin
+                  <input id="serverAdminInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  DocumentRoot
+                  <input id="documentRootInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  Porta HTTP
+                  <input id="httpPortInput" type="number" min="1" max="65535">
+                </label>
+                <label>
+                  Porta HTTPS
+                  <input id="httpsPortInput" type="number" min="1" max="65535">
+                </label>
+              </div>
+
+              <div class="check-row">
+                <label class="check">
+                  <input type="checkbox" id="enableHttpInput">
+                  VirtualHost HTTP
+                </label>
+                <label class="check">
+                  <input type="checkbox" id="forceSslInput">
+                  Redirect HTTP verso HTTPS
+                </label>
+                <label class="check">
+                  <input type="checkbox" id="proxyPreserveHostInput">
+                  ProxyPreserveHost
+                </label>
+              </div>
+
+              <div class="section-title">Log</div>
+              <div class="form-grid">
+                <label>
+                  CustomLog
+                  <input id="accessLogInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  ErrorLog
+                  <input id="errorLogInput" autocomplete="off" spellcheck="false">
+                </label>
+              </div>
+            </form>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>SSL</h2>
+                <label class="switch">
+                  <input type="checkbox" id="sslEnabledInput">
+                  <span></span>
+                  SSL
+                </label>
+              </div>
+
+              <div class="form-grid single">
+                <label>
+                  Certificato gestito
+                  <select id="managedCertificateInput"></select>
+                </label>
+                <label>
+                  SSLCertificateFile
+                  <input id="certificateFileInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  SSLCertificateKeyFile
+                  <input id="certificateKeyFileInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  SSLCACertificateFile
+                  <input id="caCertificateFileInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  Direttive SSL
+                  <textarea id="sslDirectivesInput" rows="5" spellcheck="false"></textarea>
+                </label>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="routes">
+          <section class="panel">
+            <div class="panel-heading">
+              <h2>Redirect</h2>
+              <button class="ghost-button compact" id="addRedirectButton" type="button">
+                <span data-icon="plus"></span>
+                Aggiungi
+              </button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Da</th>
+                    <th>A</th>
+                    <th>Stato</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="redirectRows"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h2>ProxyPass</h2>
+              <button class="ghost-button compact" id="addProxyButton" type="button">
+                <span data-icon="plus"></span>
+                Aggiungi
+              </button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Path</th>
+                    <th>Protocollo</th>
+                    <th>Target host</th>
+                    <th>Porta</th>
+                    <th>Target path</th>
+                    <th>Reverse</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="proxyRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-panel="config">
+          <section class="panel config-panel">
+            <div class="panel-heading">
+              <h2>Preview Apache</h2>
+              <div class="inline-actions">
+                <button class="ghost-button compact" id="refreshPreviewButton" type="button">
+                  <span data-icon="refresh-cw"></span>
+                  Aggiorna
+                </button>
+                <button class="primary-button compact" id="deployButton" type="button">
+                  <span data-icon="upload"></span>
+                  Esporta
+                </button>
+              </div>
+            </div>
+            <pre class="config-preview" id="configPreview"></pre>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-panel="certs">
+          <div class="editor-grid">
+            <form class="panel" id="certificateForm">
+              <div class="panel-heading">
+                <h2>OVH DNS-01</h2>
+                <label class="check">
+                  <input type="checkbox" id="certStagingInput" checked>
+                  Staging
+                </label>
+              </div>
+              <div class="form-grid">
+                <label>
+                  Nome certificato
+                  <input id="certNameInput" autocomplete="off" spellcheck="false" placeholder="poloinformatico.it">
+                </label>
+                <label>
+                  Email
+                  <input id="certEmailInput" type="email" autocomplete="off" spellcheck="false" placeholder="info@poloinformatico.it">
+                </label>
+                <label class="span-2">
+                  Domini
+                  <input id="certDomainsInput" autocomplete="off" spellcheck="false" placeholder="cavalli.poloinformatico.it *.poloinformatico.it">
+                </label>
+                <label>
+                  Endpoint OVH
+                  <select id="ovhEndpointInput">
+                    <option value="ovh-eu">ovh-eu</option>
+                    <option value="ovh-ca">ovh-ca</option>
+                    <option value="kimsufi-eu">kimsufi-eu</option>
+                    <option value="kimsufi-ca">kimsufi-ca</option>
+                    <option value="soyoustart-eu">soyoustart-eu</option>
+                    <option value="soyoustart-ca">soyoustart-ca</option>
+                    <option value="runabove-ca">runabove-ca</option>
+                  </select>
+                </label>
+                <label>
+                  Propagazione DNS
+                  <input id="propagationInput" type="number" min="30" value="120">
+                </label>
+                <label>
+                  Application key
+                  <input id="applicationKeyInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  Application secret
+                  <input id="applicationSecretInput" type="password" autocomplete="off" spellcheck="false">
+                </label>
+                <label class="span-2">
+                  Consumer key
+                  <input id="consumerKeyInput" type="password" autocomplete="off" spellcheck="false">
+                </label>
+              </div>
+              <div class="inline-actions form-actions">
+                <button class="ghost-button" id="certCommandButton" type="button">
+                  <span data-icon="terminal"></span>
+                  Genera comando
+                </button>
+                <button class="primary-button" id="certRequestButton" type="button">
+                  <span data-icon="shield-check"></span>
+                  Richiedi
+                </button>
+              </div>
+            </form>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Certificati</h2>
+              </div>
+              <div class="cert-list" id="certificateList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="users">
+          <div class="editor-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Utenti</h2>
+                <button class="ghost-button compact" id="newUserButton" type="button">
+                  <span data-icon="plus"></span>
+                  Nuovo
+                </button>
+              </div>
+              <div class="table-wrap">
+                <table class="user-table">
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Nome</th>
+                      <th>Ruolo</th>
+                      <th>Stato</th>
+                      <th>2FA</th>
+                      <th>Ultimo login</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <form class="panel" id="userForm">
+              <div class="panel-heading">
+                <h2 id="userFormTitle">Nuovo utente</h2>
+                <label class="switch">
+                  <input type="checkbox" id="userEnabledInput" checked>
+                  <span></span>
+                  Attivo
+                </label>
+              </div>
+              <div class="form-grid single">
+                <label>
+                  Username
+                  <input id="userUsernameInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  Nome
+                  <input id="userDisplayNameInput" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  Email
+                  <input id="userEmailInput" type="email" autocomplete="off" spellcheck="false">
+                </label>
+                <label>
+                  Ruolo
+                  <select id="userRoleInput">
+                    <option value="operator">Operatore</option>
+                    <option value="admin">Amministratore</option>
+                  </select>
+                </label>
+                <label>
+                  Password
+                  <input id="userPasswordInput" type="password" autocomplete="new-password">
+                </label>
+                <div class="totp-box">
+                  <div class="totp-status" id="userTotpStatus">2FA non attiva</div>
+                  <canvas id="userQrCanvas" width="196" height="196" hidden></canvas>
+                  <label>
+                    Chiave Google Authenticator
+                    <input id="userTotpSecretInput" autocomplete="off" spellcheck="false" readonly>
+                  </label>
+                  <label>
+                    URI otpauth
+                    <textarea id="userOtpUriInput" rows="3" spellcheck="false" readonly></textarea>
+                  </label>
+                  <label>
+                    Codice di verifica
+                    <input id="userTotpCodeInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+                  </label>
+                </div>
+              </div>
+              <div class="inline-actions form-actions">
+                <button class="ghost-button" id="enableUserTotpButton" type="button">
+                  <span data-icon="shield-check"></span>
+                  Abilita 2FA
+                </button>
+                <button class="ghost-button" id="regenerateUserTotpButton" type="button">
+                  <span data-icon="refresh-cw"></span>
+                  Rigenera QR
+                </button>
+                <button class="primary-button" id="confirmUserTotpButton" type="button">
+                  <span data-icon="check"></span>
+                  Conferma 2FA
+                </button>
+                <button class="ghost-button" id="disableUserTotpButton" type="button">
+                  <span data-icon="x"></span>
+                  Disabilita 2FA
+                </button>
+                <button class="ghost-button danger" id="deleteUserButton" type="button">
+                  <span data-icon="trash-2"></span>
+                  Elimina
+                </button>
+                <button class="primary-button" id="saveUserButton" type="submit">
+                  <span data-icon="save"></span>
+                  Salva
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="settings">
+          <div class="editor-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Impostazioni applicazione</h2>
+              </div>
+              <div class="form-grid single">
+                <label class="switch">
+                  <input type="checkbox" id="darkModeInput">
+                  <span></span>
+                  Dark mode
+                </label>
+                <label>
+                  Nome applicazione
+                  <input value="Apache Proxy Manager" readonly>
+                </label>
+                <label>
+                  Directory config generate
+                  <input id="settingsGeneratedDir" readonly>
+                </label>
+                <label>
+                  Certbot
+                  <input id="settingsCertbotBin" readonly>
+                </label>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Apache</h2>
+              </div>
+              <div class="activity-list" id="settingsList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="logs">
+          <section class="panel">
+            <div class="panel-heading">
+              <h2>Logs generali</h2>
+              <div class="inline-actions">
+                <select id="logHostSelect"></select>
+                <select id="logKindSelect">
+                  <option value="access">Access log</option>
+                  <option value="error">Error log</option>
+                </select>
+                <button class="ghost-button compact" id="refreshLogsButton" type="button">
+                  <span data-icon="refresh-cw"></span>
+                  Aggiorna
+                </button>
+              </div>
+            </div>
+            <div class="activity-list" id="activityList"></div>
+            <div class="section-title">VirtualHost</div>
+            <pre class="config-preview log-preview" id="virtualHostLogPreview"></pre>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="/vendor/qrcode.min.js"></script>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "apache-ajp-proxy-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A small Apache reverse proxy manager with AJP and OVH DNS certificate support.",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
