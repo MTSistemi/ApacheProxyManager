@@ -108,8 +108,6 @@ Le password sono salvate con `crypto.scrypt` e salt casuale. Le sessioni usano c
 
 Il pannello `Utenti` e' visibile solo agli amministratori. L'app impedisce di eliminare o disabilitare l'ultimo amministratore attivo. La 2FA e' facoltativa e si abilita o disabilita per ogni singolo utente. Quando viene abilitata o rigenerata, il backend salva la nuova chiave solo dopo aver verificato un codice TOTP valido.
 
-La palette UI e' ispirata a https://www.metriks.ai: nero, viola `#6D29F6`, blu `#1F6CF5` e verde `#00B383`.
-
 ## Dashboard e logs
 
 La dashboard legge le metriche locali dal sistema operativo e verifica lo stato dei backend con connessioni TCP verso gli host e le porte configurate nei `ProxyPass`. I log generali corrispondono al registro attivita' dell'app; i log per VirtualHost leggono i percorsi `CustomLog` ed `ErrorLog` configurati sull'host, quando disponibili sul server dove gira l'app.
